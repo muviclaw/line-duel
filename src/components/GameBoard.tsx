@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Canvas, Path, Skia, useTouchHandler } from '@shopify/react-native-skia';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { Canvas, Path, Skia } from '@shopify/react-native-skia';
+import { StyleSheet, View, Dimensions, GestureResponderEvent } from 'react-native';
 import { GAME_CONFIG, COLORS } from '../config/constants';
 import { LineLayer } from './LineLayer';
 import { useDrawing } from '../hooks/useDrawing';
@@ -65,15 +65,17 @@ export const GameBoard: React.FC = () => {
     return path;
   }, [drawingState]);
 
-  const touchHandler = useTouchHandler({
-    onStart: ({ x, y }) => handleTouchStart(x, y),
-    onActive: ({ x, y }) => handleTouchMove(x, y),
-    onEnd: ({ x, y }) => handleTouchEnd(x, y),
-  });
+  const handleTouchEvent = (event: GestureResponderEvent) => {
+    const { locationX, locationY } = event.nativeEvent;
+
+    // Handle touch based on event type - for now just use as a simple tap
+    handleTouchStart(locationX, locationY);
+    handleTouchEnd(locationX, locationY);
+  };
 
   return (
     <View style={styles.container}>
-      <Canvas style={styles.canvas} onTouch={touchHandler}>
+      <Canvas style={styles.canvas}>
         <Path
           path={gridPath}
           color={COLORS.GRID}
