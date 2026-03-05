@@ -46,28 +46,32 @@ export const useDrawing = ({ cellSize, onLineDrawn, currentPlayerId }: UseDrawin
   }, [drawingState.isDrawing, snapToGrid]);
 
   const handleTouchEnd = useCallback((x: number, y: number) => {
-    if (!drawingState.isDrawing || !drawingState.startPoint) return;
+    setDrawingState(prevState => {
+      if (!prevState.isDrawing || !prevState.startPoint) {
+        return prevState;
+      }
 
-    const snappedPoint = snapToGrid(x, y);
+      const snappedPoint = snapToGrid(x, y);
 
-    // Only create line if start and end are different
-    if (snappedPoint.x !== drawingState.startPoint.x ||
-        snappedPoint.y !== drawingState.startPoint.y) {
-      const newLine: LineSegment = {
-        start: drawingState.startPoint,
-        end: snappedPoint,
-        playerId: currentPlayerId,
+      // Only create line if start and end are different
+      if (snappedPoint.x !== prevState.startPoint.x ||
+          snappedPoint.y !== prevState.startPoint.y) {
+        const newLine: LineSegment = {
+          start: prevState.startPoint,
+          end: snappedPoint,
+          playerId: currentPlayerId,
+        };
+
+        onLineDrawn?.(newLine);
+      }
+
+      return {
+        isDrawing: false,
+        startPoint: null,
+        currentPoint: null,
       };
-
-      onLineDrawn?.(newLine);
-    }
-
-    setDrawingState({
-      isDrawing: false,
-      startPoint: null,
-      currentPoint: null,
     });
-  }, [drawingState.isDrawing, drawingState.startPoint, snapToGrid, onLineDrawn, currentPlayerId]);
+  }, [snapToGrid, onLineDrawn, currentPlayerId]);
 
   const handleTouchCancel = useCallback(() => {
     setDrawingState({
