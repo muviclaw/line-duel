@@ -1,5 +1,13 @@
 // Jest setup file
 
+// Mock Expo modules
+jest.mock('expo', () => ({
+  __ExpoImportMetaRegistry: {},
+}));
+
+jest.mock('expo/src/winter/runtime.native', () => ({}));
+jest.mock('expo/src/winter/installGlobal', () => ({}));
+
 // Mock @shopify/react-native-skia
 jest.mock('@shopify/react-native-skia', () => ({
   Canvas: 'Canvas',
