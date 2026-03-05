@@ -1,5 +1,10 @@
-import { calculatePolygonArea, isPointInPolygon } from '../territoryDetection';
-import type { Point } from '../../types';
+import {
+  calculatePolygonArea,
+  isPointInPolygon,
+  findClosedPolygons,
+  detectTerritory
+} from '../territoryDetection';
+import type { Point, LineSegment } from '../../types';
 
 describe('territoryDetection', () => {
   describe('calculatePolygonArea', () => {
@@ -61,6 +66,91 @@ describe('territoryDetection', () => {
       // Points on the boundary might return true or false depending on implementation
       const result = isPointInPolygon({ x: 0, y: 2 }, square);
       expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('findClosedPolygons', () => {
+    it('should return empty array for less than 3 lines', () => {
+      const lines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, playerId: 'player1' },
+      ];
+      expect(findClosedPolygons(lines)).toEqual([]);
+    });
+
+    it('should detect a simple triangle', () => {
+      const lines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, playerId: 'player1' },
+        { start: { x: 2, y: 0 }, end: { x: 1, y: 2 }, playerId: 'player1' },
+        { start: { x: 1, y: 2 }, end: { x: 0, y: 0 }, playerId: 'player1' },
+      ];
+      const polygons = findClosedPolygons(lines);
+      expect(polygons.length).toBeGreaterThan(0);
+      expect(polygons[0].length).toBe(3);
+    });
+
+    it('should detect a simple square', () => {
+      const lines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, playerId: 'player1' },
+        { start: { x: 2, y: 0 }, end: { x: 2, y: 2 }, playerId: 'player1' },
+        { start: { x: 2, y: 2 }, end: { x: 0, y: 2 }, playerId: 'player1' },
+        { start: { x: 0, y: 2 }, end: { x: 0, y: 0 }, playerId: 'player1' },
+      ];
+      const polygons = findClosedPolygons(lines);
+      expect(polygons.length).toBeGreaterThan(0);
+      expect(polygons[0].length).toBe(4);
+    });
+  });
+
+  describe('detectTerritory', () => {
+    it('should return null when no polygon is closed', () => {
+      const existingLines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, playerId: 'player1' },
+      ];
+      const newLine: LineSegment = {
+        start: { x: 2, y: 0 },
+        end: { x: 3, y: 0 },
+        playerId: 'player1',
+      };
+
+      const territory = detectTerritory(newLine, existingLines, 'player1');
+      expect(territory).toBeNull();
+    });
+
+    it('should detect territory when closing a triangle', () => {
+      const existingLines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, playerId: 'player1' },
+        { start: { x: 2, y: 0 }, end: { x: 1, y: 2 }, playerId: 'player1' },
+      ];
+      const newLine: LineSegment = {
+        start: { x: 1, y: 2 },
+        end: { x: 0, y: 0 },
+        playerId: 'player1',
+      };
+
+      const territory = detectTerritory(newLine, existingLines, 'player1');
+      expect(territory).not.toBeNull();
+      expect(territory?.playerId).toBe('player1');
+      expect(territory?.area).toBeGreaterThan(0);
+      expect(territory?.points.length).toBe(3);
+    });
+
+    it('should detect territory when closing a square', () => {
+      const existingLines: LineSegment[] = [
+        { start: { x: 0, y: 0 }, end: { x: 2, y: 0 }, playerId: 'player1' },
+        { start: { x: 2, y: 0 }, end: { x: 2, y: 2 }, playerId: 'player1' },
+        { start: { x: 2, y: 2 }, end: { x: 0, y: 2 }, playerId: 'player1' },
+      ];
+      const newLine: LineSegment = {
+        start: { x: 0, y: 2 },
+        end: { x: 0, y: 0 },
+        playerId: 'player1',
+      };
+
+      const territory = detectTerritory(newLine, existingLines, 'player1');
+      expect(territory).not.toBeNull();
+      expect(territory?.playerId).toBe('player1');
+      expect(territory?.area).toBe(4);
+      expect(territory?.points.length).toBe(4);
     });
   });
 });
