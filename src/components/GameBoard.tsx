@@ -1,25 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { StyleSheet, View, Dimensions, GestureResponderEvent } from 'react-native';
 import { GAME_CONFIG, COLORS } from '../config/constants';
 import { LineLayer } from './LineLayer';
+import { TerritoryLayer } from './TerritoryLayer';
 import { useDrawing } from '../hooks/useDrawing';
-import type { LineSegment } from '../types';
+import { detectTerritory } from '../utils/territoryDetection';
+import type { LineSegment, Territory } from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const PADDING = 20;
 const BOARD_SIZE = SCREEN_WIDTH - PADDING * 2;
 const CELL_SIZE = BOARD_SIZE / GAME_CONFIG.BOARD_SIZE;
 
-export const GameBoard: React.FC = () => {
+interface GameBoardProps {
+  onScoreChange?: (player1Score: number, player2Score: number) => void;
+}
+
+export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
   const [lines, setLines] = useState<LineSegment[]>([]);
+  const [territories, setTerritories] = useState<Territory[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'player1' | 'player2'>('player1');
+  const [player1Score, setPlayer1Score] = useState(0);
+  const [player2Score, setPlayer2Score] = useState(0);
 
   const handleLineDrawn = (line: LineSegment) => {
-    setLines(prev => [...prev, line]);
+    setLines(prev => {
+      const newLines = [...prev, line];
+
+      // Detect if this line closes a polygon
+      const newTerritory = detectTerritory(line, prev, currentPlayer);
+
+      if (newTerritory) {
+        setTerritories(prevTerritories => [...prevTerritories, newTerritory]);
+
+        // Update scores
+        if (currentPlayer === 'player1') {
+          setPlayer1Score(prevScore => prevScore + newTerritory.area);
+        } else {
+          setPlayer2Score(prevScore => prevScore + newTerritory.area);
+        }
+      }
+
+      return newLines;
+    });
+
     // Toggle player
     setCurrentPlayer(prev => prev === 'player1' ? 'player2' : 'player1');
   };
+
+  // Notify parent of score changes
+  useEffect(() => {
+    onScoreChange?.(player1Score, player2Score);
+  }, [player1Score, player2Score, onScoreChange]);
 
   const { drawingState, handleTouchStart, handleTouchMove, handleTouchEnd } = useDrawing({
     cellSize: CELL_SIZE,
@@ -82,6 +115,7 @@ export const GameBoard: React.FC = () => {
           style="stroke"
           strokeWidth={1}
         />
+        <TerritoryLayer territories={territories} cellSize={CELL_SIZE} />
         <LineLayer lines={lines} cellSize={CELL_SIZE} />
         {previewPath && (
           <Path
