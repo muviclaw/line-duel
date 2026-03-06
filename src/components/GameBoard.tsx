@@ -16,17 +16,24 @@ const CELL_SIZE = BOARD_SIZE / GAME_CONFIG.BOARD_SIZE;
 
 interface GameBoardProps {
   onScoreChange?: (player1Score: number, player2Score: number) => void;
+  onGameOver?: (winner: 'player1' | 'player2' | 'tie', finalScores: { player1: number; player2: number }) => void;
+  onTurnChange?: (turn: number) => void;
 }
 
-export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange, onGameOver, onTurnChange }) => {
   const [lines, setLines] = useState<LineSegment[]>([]);
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'player1' | 'player2'>('player1');
   const [player1Score, setPlayer1Score] = useState(0);
   const [player2Score, setPlayer2Score] = useState(0);
+  const [turnCount, setTurnCount] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLineDrawn = (line: LineSegment) => {
+    // Don't allow moves if game is over
+    if (gameOver) return;
+
     // Validate move
     const validation = isValidMove(line, lines);
 
@@ -35,6 +42,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
       setTimeout(() => setErrorMessage(null), 2000);
       return;
     }
+
     setLines(prev => {
       const newLines = [...prev, line];
 
@@ -54,6 +62,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
 
       return newLines;
     });
+
+    // Increment turn count
+    const newTurnCount = turnCount + 1;
+    setTurnCount(newTurnCount);
+    onTurnChange?.(newTurnCount);
+
+    // Check if game is over
+    if (newTurnCount >= GAME_CONFIG.MAX_TURNS) {
+      setGameOver(true);
+      const winner = player1Score > player2Score ? 'player1' :
+                     player2Score > player1Score ? 'player2' : 'tie';
+      onGameOver?.(winner, { player1: player1Score, player2: player2Score });
+    }
 
     // Toggle player
     setCurrentPlayer(prev => prev === 'player1' ? 'player2' : 'player1');
