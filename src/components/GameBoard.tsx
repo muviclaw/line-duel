@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
-import { StyleSheet, View, Dimensions, GestureResponderEvent } from 'react-native';
+import { StyleSheet, View, Dimensions, GestureResponderEvent, Text } from 'react-native';
 import { GAME_CONFIG, COLORS } from '../config/constants';
 import { LineLayer } from './LineLayer';
 import { TerritoryLayer } from './TerritoryLayer';
 import { useDrawing } from '../hooks/useDrawing';
 import { detectTerritory } from '../utils/territoryDetection';
+import { isValidMove } from '../utils/moveValidation';
 import type { LineSegment, Territory } from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -23,8 +24,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
   const [currentPlayer, setCurrentPlayer] = useState<'player1' | 'player2'>('player1');
   const [player1Score, setPlayer1Score] = useState(0);
   const [player2Score, setPlayer2Score] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLineDrawn = (line: LineSegment) => {
+    // Validate move
+    const validation = isValidMove(line, lines);
+
+    if (!validation.valid) {
+      setErrorMessage(validation.reason || 'Invalid move');
+      setTimeout(() => setErrorMessage(null), 2000);
+      return;
+    }
     setLines(prev => {
       const newLines = [...prev, line];
 
@@ -108,6 +118,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({ onScoreChange }) => {
 
   return (
     <View style={styles.container}>
+      {errorMessage && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
       <Canvas style={styles.canvas}>
         <Path
           path={gridPath}
@@ -138,9 +153,28 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   canvas: {
     width: BOARD_SIZE,
     height: BOARD_SIZE,
+  },
+  errorContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 20,
+    right: 20,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    padding: 12,
+    zIndex: 1000,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
